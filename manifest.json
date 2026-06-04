@@ -1,10 +1,10 @@
 {
-  "name": "İzin Takip Pro",
-  "short_name": "İzinTakip",
-  "start_url": "index.html",
+  "name": "Yıllık İzin Takibi",
+  "short_name": "İzin Takibi",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#03dac6",
+  "theme_color": "#1976D2",
+  "background_color": "#F5F7FA",
+  "start_url": "./",
   "icons": [
     {
       "src": "icon-512.png",
