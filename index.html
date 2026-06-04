@@ -10,16 +10,18 @@
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
         input, select { width: 100%; padding: 10px; margin: 5px 0; background: #2c2c2c; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; cursor: pointer; background: #03dac6; font-weight: bold; }
+        .edit-btn { background: #6200ee !important; color: white; }
     </style>
 </head>
 <body>
     <h2>İzin Takip Sistemi</h2>
+    
     <div class="card">
         <label>İşe Giriş Tarihi:</label>
         <input type="date" id="joinDate" disabled>
-        <label>Yıllık İzin Bakiyesi:</label>
+        <label>Başlangıç Yıllık İzin Bakiyesi:</label>
         <input type="number" id="yillikBakiye" disabled>
-        <button onclick="editMode()" style="background:#6200ee; color:white;">Düzenle</button>
+        <button id="mainBtn" onclick="toggleMode()">Kaydet</button>
     </div>
 
     <div class="card">
@@ -27,58 +29,49 @@
         <p>Mazeret İzni (5): <span id="mKalan">5</span> gün</p>
     </div>
 
-    <div class="card">
-        <select id="tip"><option value="yillik">Yıllık</option><option value="mazeret">Mazeret</option></select>
-        <input type="date" id="start">
-        <input type="number" id="gun" placeholder="Gün sayısı">
-        <input type="text" id="desc" placeholder="Açıklama">
-        <button onclick="addLeave()">İzin Ekle</button>
-    </div>
-
     <script>
-        let data = JSON.parse(localStorage.getItem('izinData')) || {
-            joinDate: '', yillikBakiye: 0, lastYear: new Date().getFullYear(), leaves: []
+        let isEditing = false;
+        let data = JSON.parse(localStorage.getItem('izinData')) || { 
+            joinDate: '', yillikBakiye: 0, lastYear: new Date().getFullYear(), leaves: [] 
         };
 
-        function calculateHakedis() {
-            const now = new Date();
-            const join = new Date(data.joinDate);
-            // Yıllık izin hak edişi (Yıl dönümü kontrolü)
-            if (now.getMonth() === join.getMonth() && now.getDate() === join.getDate()) {
-                let y = now.getFullYear() - join.getFullYear();
-                let hak = (y <= 5) ? 14 : (y <= 15 ? 20 : 26);
-                data.yillikBakiye += hak;
+        function toggleMode() {
+            const btn = document.getElementById('mainBtn');
+            const inputs = [document.getElementById('joinDate'), document.getElementById('yillikBakiye')];
+            
+            if (!isEditing) {
+                // Düzenleme Moduna Geç
+                inputs.forEach(i => i.disabled = false);
+                btn.innerText = "Kaydet";
+                btn.className = "";
+                isEditing = true;
+            } else {
+                // Kaydet ve Kilitli Moda Geç
+                data.joinDate = document.getElementById('joinDate').value;
+                data.yillikBakiye = parseInt(document.getElementById('yillikBakiye').value) || 0;
+                localStorage.setItem('izinData', JSON.stringify(data));
+                
+                inputs.forEach(i => i.disabled = true);
+                btn.innerText = "Düzenle";
+                btn.className = "edit-btn";
+                isEditing = false;
             }
-            // Mazeret izni 1 Ocak'ta reset
-            if (data.lastYear !== now.getFullYear()) {
-                data.leaves = data.leaves.filter(l => l.tip === 'yillik');
-                data.lastYear = now.getFullYear();
+        }
+
+        // Uygulama açılış kontrolü
+        window.onload = () => {
+            if (!data.joinDate) {
+                // İlk defa açılış: Düzenleme modunda başla
+                toggleMode(); 
+            } else {
+                // Veri varsa: Kilitli modda başla
+                document.getElementById('joinDate').value = data.joinDate;
+                document.getElementById('yillikBakiye').value = data.yillikBakiye;
+                document.getElementById('mainBtn').innerText = "Düzenle";
+                document.getElementById('mainBtn').className = "edit-btn";
             }
-            localStorage.setItem('izinData', JSON.stringify(data));
-        }
-
-        function editMode() {
-            document.getElementById('joinDate').disabled = false;
-            document.getElementById('yillikBakiye').disabled = false;
-        }
-
-        function addLeave() {
-            data.leaves.push({ tip: document.getElementById('tip').value, gun: parseInt(document.getElementById('gun').value), desc: document.getElementById('desc').value });
-            localStorage.setItem('izinData', JSON.stringify(data));
-            updateUI();
-        }
-
-        function updateUI() {
-            document.getElementById('joinDate').value = data.joinDate;
-            document.getElementById('yillikBakiye').value = data.yillikBakiye;
-            const yKull = data.leaves.filter(l => l.tip === 'yillik').reduce((s,l) => s + l.gun, 0);
-            const mKull = data.leaves.filter(l => l.tip === 'mazeret').reduce((s,l) => s + l.gun, 0);
-            document.getElementById('yKalan').innerText = data.yillikBakiye - yKull;
-            document.getElementById('mKalan').innerText = 5 - mKull;
-        }
-
-        calculateHakedis();
-        updateUI();
+            // ... (diğer hesaplama fonksiyonların)
+        };
     </script>
     <script src="sw.js"></script>
 </body>
