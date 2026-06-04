@@ -128,7 +128,7 @@
             <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 0.9rem;">Uygulamayı kullanmaya başlamak için aşağıdaki bilgileri giriniz.</p>
             <div class="form-group">
                 <label>İşe Giriş Tarihi (GG.AA.YYYY)</label>
-                <input type="text" id="setup-hireDate" placeholder="Örn: 04.09.2025" pattern="\d{2}\.\d{2}\.\d{4}">
+                <input type="text" id="setup-hireDate" placeholder="Örn: 04.09.2024" pattern="\d{2}\.\d{2}\.\d{4}">
             </div>
             <div class="form-group">
                 <label>Mevcut Kullanılabilir Yıllık İzin (Gün)</label>
@@ -194,7 +194,7 @@
             annualLeave: 0,
             annualEarnedTotal: 0,
             excuseLeave: 5,
-            lastAccrualYear: 0,
+            lastProcessedAccrualDate: null, // Sadece gelecekteki hak edişleri takip etmek için
             lastExcuseLeaveResetYear: new Date().getFullYear(),
             leaveRecords: []
         };
@@ -215,6 +215,12 @@
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 appData = JSON.parse(saved);
+                // Eski versiyondan geçiş uyumluluğu
+                if (appData.lastAccrualYear !== undefined) {
+                    delete appData.lastAccrualYear;
+                    appData.lastProcessedAccrualDate = null;
+                    saveData();
+                }
             }
         }
 
@@ -239,21 +245,25 @@
         }
 
         function getNextAccrualDate() {
+            if (!appData.hireDate) return "-";
             const hire = parseDate(appData.hireDate);
             const now = new Date();
-            let yearsOfService = now.getFullYear() - hire.getFullYear();
-            if (now.getMonth() < hire.getMonth() || (now.getMonth() === hire.getMonth() && now.getDate() < hire.getDate())) {
-                yearsOfService--;
-            }
             
-            const nextDate = new Date(hire);
-            nextDate.setFullYear(hire.getFullYear() + yearsOfService + 1);
+            // Bu yılki yıl dönümü
+            let nextDate = new Date(now.getFullYear(), hire.getMonth(), hire.getDate());
+            // Eğer bu yılki yıl dönümü geçtiyse, seneki yıl dönümünü göster
+            if (now >= nextDate) {
+                nextDate.setFullYear(nextDate.getFullYear() + 1);
+            }
             return formatDate(nextDate);
         }
 
         function getEntitlementForCompletedYears(yearsCompleted) {
-            if (yearsCompleted >= 1 && yearsCompleted <= 4) return 14;
-            if (yearsCompleted >= 5 && yearsCompleted <= 14) return 20;
+            // 1-5. yıllar arası (5. yıl dahil) 14 gün
+            if (yearsCompleted >= 1 && yearsCompleted <= 5) return 14;
+            // 6-14. yıllar arası 20 gün
+            if (yearsCompleted >= 6 && yearsCompleted <= 14) return 20;
+            // 15. yıl ve sonrası 26 gün
             if (yearsCompleted >= 15) return 26;
             return 0;
         }
@@ -263,30 +273,49 @@
 
             const hire = parseDate(appData.hireDate);
             const now = new Date();
+            let changed = false;
 
-            let yearsOfService = now.getFullYear() - hire.getFullYear();
-            if (now.getMonth() < hire.getMonth() || (now.getMonth() === hire.getMonth() && now.getDate() < hire.getDate())) {
-                yearsOfService--;
+            // En son işlenen hak ediş tarihi (yoksa işe giriş tarihinden 1 yıl öncesi gibi bir başlangıç noktası)
+            let checkDate = appData.lastProcessedAccrualDate 
+                ? parseDate(appData.lastProcessedAccrualDate) 
+                : new Date(hire.getFullYear() - 1, hire.getMonth(), hire.getDate());
+
+            // Bugüne kadar olan en son yıl dönümünü bul
+            let currentYearAnniversary = new Date(now.getFullYear(), hire.getMonth(), hire.getDate());
+            let targetAnniversary = new Date(currentYearAnniversary);
+            if (now < currentYearAnniversary) {
+                targetAnniversary.setFullYear(targetAnniversary.getFullYear() - 1);
             }
 
-            // Yıllık İzin Hak Edişi Kontrolü
-            if (yearsOfService > appData.lastAccrualYear) {
-                for (let y = appData.lastAccrualYear + 1; y <= yearsOfService; y++) {
-                    let entitlement = getEntitlementForCompletedYears(y);
-                    if (entitlement > 0) {
-                        appData.annualLeave += entitlement;
-                        appData.annualEarnedTotal += entitlement;
-                    }
+            // Döngü: İşlenmemiş yıl dönümlerini yakala
+            while (true) {
+                checkDate.setFullYear(checkDate.getFullYear() + 1);
+                
+                // Hedef yıl dönümünü geçtiysek döngüden çık
+                if (checkDate > targetAnniversary) {
+                    break;
                 }
-                appData.lastAccrualYear = yearsOfService;
-                saveData();
+
+                // Bu yıl dönümü daha önce işlendiyse atla
+                if (appData.lastProcessedAccrualDate && checkDate <= parseDate(appData.lastProcessedAccrualDate)) {
+                    continue;
+                }
+
+                // Tamamlanan hizmet yılını hesapla
+                let completedYears = checkDate.getFullYear() - hire.getFullYear();
+                let entitlement = getEntitlementForCompletedYears(completedYears);
+
+                if (entitlement > 0) {
+                    appData.annualLeave += entitlement;
+                    appData.annualEarnedTotal += entitlement;
+                    changed = true;
+                }
+                
+                // İşlendi olarak işaretle
+                appData.lastProcessedAccrualDate = formatDate(checkDate);
             }
 
-            // Mazeret İzni Sıfırlama Kontrolü (Her yıl 1 Ocak)
-            const currentYear = now.getFullYear();
-            if (currentYear > appData.lastExcuseLeaveResetYear) {
-                appData.excuseLeave = 5;
-                appData.lastExcuseLeaveResetYear = currentYear;
+            if (changed) {
                 saveData();
             }
         }
@@ -348,7 +377,7 @@
             const annualLeave = parseInt(document.getElementById('setup-annualLeave').value) || 0;
 
             if (!/^\d{2}\.\d{2}\.\d{4}$/.test(hireDate)) {
-                alert('Lütfen tarihi GG.AA.YYYY formatında giriniz. (Örn: 04.09.2025)');
+                alert('Lütfen tarihi GG.AA.YYYY formatında giriniz. (Örn: 04.09.2024)');
                 return;
             }
 
@@ -356,13 +385,13 @@
             appData.annualLeave = annualLeave;
             appData.annualEarnedTotal = annualLeave;
             appData.excuseLeave = 5;
-            appData.lastAccrualYear = 0;
+            appData.lastProcessedAccrualDate = null; // Geçmişi hesaplama, sıfırdan başla
             appData.lastExcuseLeaveResetYear = new Date().getFullYear();
             appData.leaveRecords = [];
             
             saveData();
             closeModal('initialSetupModal');
-            checkAccruals();
+            checkAccruals(); // Sadece gelecek kontrolleri için çalışır
             render();
             document.getElementById('app').style.display = 'block';
         }
@@ -383,7 +412,7 @@
                            String(dateObj.getMonth() + 1).padStart(2, '0') + '.' + 
                            dateObj.getFullYear();
 
-            // Eksi bakiyeye düşmeye izin ver (Kullanıcı talebi)
+            // Eksi bakiyeye düşmeye izin ver
             if (type === 'Yıllık') {
                 appData.annualLeave -= days;
             } else {
@@ -438,7 +467,7 @@
 
             if (appData.hireDate !== newHireDate) {
                 appData.hireDate = newHireDate;
-                appData.lastAccrualYear = 0; 
+                appData.lastProcessedAccrualDate = null; // Tarih değişirse hak ediş takibini sıfırla
             }
             
             appData.annualLeave = newAnnualLeave;
