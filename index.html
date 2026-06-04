@@ -3,36 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>İzin Takip Pro</title>
+    <title>İzin Takip PWA</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
-        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        button { width: 100%; padding: 15px; background: #03dac6; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; border-radius: 5px; border: 1px solid #333; background: #2c2c2c; color: white; }
+        body { font-family: sans-serif; background: #121212; color: #e0e0e0; padding: 20px; line-height: 1.5; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #2c2c2c; color: white; }
+        button { width: 100%; padding: 14px; background: #03dac6; border: none; border-radius: 8px; font-weight: bold; color: #000; cursor: pointer; }
+        .stat { font-size: 1.2rem; font-weight: bold; color: #03dac6; }
     </style>
 </head>
 <body>
-    <h2>İzin Takip Paneli</h2>
+    <h2>İzin Takip Sistemi</h2>
     <div class="card">
         <label>İşe Giriş Tarihi:</label>
         <input type="date" id="joinDate">
-        <label>Devreden İzin (Gün):</label>
+        <label>Geçmişten Devreden İzin (Gün):</label>
         <input type="number" id="carryOver" value="0">
-        <button onclick="saveSettings()">Ayarları Kaydet</button>
+        <button onclick="calculate()">Hesapla ve Kaydet</button>
     </div>
     <div class="card">
-        <h3>Kalan İzin: <span id="remainingDays">0</span></h3>
-        <p>Mazeret İzni (Yıllık 5): <span id="mazeretDays">5</span></p>
+        <h3>Özet</h3>
+        <p>Toplam Hak Ediş: <span id="totalRights" class="stat">0</span> Gün</p>
+        <p>Kullanılan İzin: <input type="number" id="usedDays" value="0" onchange="calculate()"></p>
+        <p>Kalan İzin: <span id="remaining" class="stat">0</span> Gün</p>
     </div>
     <script>
-        // Basit veri yönetimi mantığı
-        function saveSettings() {
-            localStorage.setItem('joinDate', document.getElementById('joinDate').value);
-            localStorage.setItem('carryOver', document.getElementById('carryOver').value);
-            alert("Ayarlar kaydedildi.");
+        function calculate() {
+            const joinDate = new Date(document.getElementById('joinDate').value);
+            const carryOver = parseInt(document.getElementById('carryOver').value) || 0;
+            const used = parseInt(document.getElementById('usedDays').value) || 0;
+            const now = new Date();
+            
+            let diffYear = now.getFullYear() - joinDate.getFullYear();
+            let entitlement = 0;
+            
+            if (diffYear >= 1 && diffYear < 6) entitlement = 14;
+            else if (diffYear >= 6 && diffYear < 15) entitlement = 20;
+            else if (diffYear >= 15) entitlement = 26;
+
+            const total = entitlement + carryOver;
+            const remaining = total - used;
+
+            document.getElementById('totalRights').innerText = total;
+            document.getElementById('remaining').innerText = remaining;
+
+            localStorage.setItem('data', JSON.stringify({joinDate: joinDate, carryOver, used}));
         }
-        // İzin hesaplama mantığı burada yıllara göre switch-case ile genişletilecek
+        window.onload = () => {
+            const saved = JSON.parse(localStorage.getItem('data'));
+            if(saved) {
+                document.getElementById('joinDate').value = saved.joinDate.split('T')[0];
+                document.getElementById('carryOver').value = saved.carryOver;
+                document.getElementById('usedDays').value = saved.used;
+                calculate();
+            }
+        };
     </script>
     <script src="sw.js"></script>
 </body>
