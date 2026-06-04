@@ -194,7 +194,7 @@
             annualLeave: 0,
             annualEarnedTotal: 0,
             excuseLeave: 5,
-            lastProcessedAccrualDate: null, // Sadece gelecekteki hak edişleri takip etmek için
+            lastProcessedAccrualDate: null,
             lastExcuseLeaveResetYear: new Date().getFullYear(),
             leaveRecords: []
         };
@@ -215,12 +215,6 @@
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 appData = JSON.parse(saved);
-                // Eski versiyondan geçiş uyumluluğu
-                if (appData.lastAccrualYear !== undefined) {
-                    delete appData.lastAccrualYear;
-                    appData.lastProcessedAccrualDate = null;
-                    saveData();
-                }
             }
         }
 
@@ -249,9 +243,7 @@
             const hire = parseDate(appData.hireDate);
             const now = new Date();
             
-            // Bu yılki yıl dönümü
             let nextDate = new Date(now.getFullYear(), hire.getMonth(), hire.getDate());
-            // Eğer bu yılki yıl dönümü geçtiyse, seneki yıl dönümünü göster
             if (now >= nextDate) {
                 nextDate.setFullYear(nextDate.getFullYear() + 1);
             }
@@ -259,13 +251,23 @@
         }
 
         function getEntitlementForCompletedYears(yearsCompleted) {
-            // 1-5. yıllar arası (5. yıl dahil) 14 gün
             if (yearsCompleted >= 1 && yearsCompleted <= 5) return 14;
-            // 6-14. yıllar arası 20 gün
             if (yearsCompleted >= 6 && yearsCompleted <= 14) return 20;
-            // 15. yıl ve sonrası 26 gün
             if (yearsCompleted >= 15) return 26;
             return 0;
+        }
+
+        // KRİTİK FONKSİYON: Başlangıç bakiyesi girildiğinde, geçmiş tüm yıl dönümlerini "işlenmiş" olarak işaretle
+        function markPastAccrualsAsProcessed() {
+            if (!appData.hireDate) return;
+            
+            const hire = parseDate(appData.hireDate);
+            const now = new Date();
+            
+            // Bugünün tarihini "işlenmiş" olarak işaretle
+            // Böylece checkAccruals() sadece gelecek yıl dönümlerini kontrol eder
+            appData.lastProcessedAccrualDate = formatDate(now);
+            saveData();
         }
 
         function checkAccruals() {
@@ -275,47 +277,47 @@
             const now = new Date();
             let changed = false;
 
-            // En son işlenen hak ediş tarihi (yoksa işe giriş tarihinden 1 yıl öncesi gibi bir başlangıç noktası)
-            let checkDate = appData.lastProcessedAccrualDate 
+            // En son işlenen hak ediş tarihi
+            let lastProcessed = appData.lastProcessedAccrualDate 
                 ? parseDate(appData.lastProcessedAccrualDate) 
-                : new Date(hire.getFullYear() - 1, hire.getMonth(), hire.getDate());
+                : new Date(now); // Eğer yoksa bugün
 
-            // Bugüne kadar olan en son yıl dönümünü bul
-            let currentYearAnniversary = new Date(now.getFullYear(), hire.getMonth(), hire.getDate());
-            let targetAnniversary = new Date(currentYearAnniversary);
-            if (now < currentYearAnniversary) {
-                targetAnniversary.setFullYear(targetAnniversary.getFullYear() - 1);
-            }
+            // Gelecek yıl dönümlerini kontrol et
+            // İşe giriş tarihinden itibaren her yıl dönümünü kontrol et
+            let checkYear = hire.getFullYear() + 1; // İlk yıl dönümü
+            let maxYear = now.getFullYear() + 5; // Gelecek 5 yıl için kontrol et (yeterli)
 
-            // Döngü: İşlenmemiş yıl dönümlerini yakala
-            while (true) {
-                checkDate.setFullYear(checkDate.getFullYear() + 1);
+            while (checkYear <= maxYear) {
+                let anniversaryDate = new Date(checkYear, hire.getMonth(), hire.getDate());
                 
-                // Hedef yıl dönümünü geçtiysek döngüden çık
-                if (checkDate > targetAnniversary) {
-                    break;
-                }
+                // Bu yıl dönümü gelecekte mi ve daha önce işlenmemiş mi?
+                if (anniversaryDate > lastProcessed && anniversaryDate <= now) {
+                    // Tamamlanan hizmet yılını hesapla
+                    let completedYears = checkYear - hire.getFullYear();
+                    let entitlement = getEntitlementForCompletedYears(completedYears);
 
-                // Bu yıl dönümü daha önce işlendiyse atla
-                if (appData.lastProcessedAccrualDate && checkDate <= parseDate(appData.lastProcessedAccrualDate)) {
-                    continue;
-                }
-
-                // Tamamlanan hizmet yılını hesapla
-                let completedYears = checkDate.getFullYear() - hire.getFullYear();
-                let entitlement = getEntitlementForCompletedYears(completedYears);
-
-                if (entitlement > 0) {
-                    appData.annualLeave += entitlement;
-                    appData.annualEarnedTotal += entitlement;
-                    changed = true;
+                    if (entitlement > 0) {
+                        appData.annualLeave += entitlement;
+                        appData.annualEarnedTotal += entitlement;
+                        changed = true;
+                    }
+                    
+                    // İşlendi olarak işaretle
+                    appData.lastProcessedAccrualDate = formatDate(anniversaryDate);
                 }
                 
-                // İşlendi olarak işaretle
-                appData.lastProcessedAccrualDate = formatDate(checkDate);
+                checkYear++;
             }
 
             if (changed) {
+                saveData();
+            }
+
+            // Mazeret İzni Sıfırlama Kontrolü (Her yıl 1 Ocak)
+            const currentYear = now.getFullYear();
+            if (currentYear > appData.lastExcuseLeaveResetYear) {
+                appData.excuseLeave = 5;
+                appData.lastExcuseLeaveResetYear = currentYear;
                 saveData();
             }
         }
@@ -385,13 +387,14 @@
             appData.annualLeave = annualLeave;
             appData.annualEarnedTotal = annualLeave;
             appData.excuseLeave = 5;
-            appData.lastProcessedAccrualDate = null; // Geçmişi hesaplama, sıfırdan başla
             appData.lastExcuseLeaveResetYear = new Date().getFullYear();
             appData.leaveRecords = [];
             
+            // KRİTİK: Geçmiş tüm yıl dönümlerini "işlenmiş" olarak işaretle
+            markPastAccrualsAsProcessed();
+            
             saveData();
             closeModal('initialSetupModal');
-            checkAccruals(); // Sadece gelecek kontrolleri için çalışır
             render();
             document.getElementById('app').style.display = 'block';
         }
@@ -412,7 +415,6 @@
                            String(dateObj.getMonth() + 1).padStart(2, '0') + '.' + 
                            dateObj.getFullYear();
 
-            // Eksi bakiyeye düşmeye izin ver
             if (type === 'Yıllık') {
                 appData.annualLeave -= days;
             } else {
@@ -467,12 +469,14 @@
 
             if (appData.hireDate !== newHireDate) {
                 appData.hireDate = newHireDate;
-                appData.lastProcessedAccrualDate = null; // Tarih değişirse hak ediş takibini sıfırla
             }
             
             appData.annualLeave = newAnnualLeave;
+            
+            // KRİTİK: Ayarlarda da geçmiş yıl dönümlerini "işlenmiş" olarak işaretle
+            markPastAccrualsAsProcessed();
+            
             saveData();
-            checkAccruals();
             closeModal('settingsModal');
             render();
         }
