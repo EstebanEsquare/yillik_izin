@@ -17,7 +17,6 @@
             --text: #212121;
             --text-secondary: #757575;
             --danger: #D32F2F;
-            --success: #388E3C;
             --border-radius: 12px;
         }
 
@@ -32,7 +31,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { background-color: var(--bg); color: var(--text); padding: 16px; padding-bottom: 80px; }
-
+        
         header { text-align: center; margin-bottom: 24px; padding-top: 8px; }
         header h1 { font-size: 1.5rem; color: var(--primary); }
 
@@ -40,149 +39,14 @@
         .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .card.full-width { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; }
         .card-label { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; }
-        .card-value { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        .card-value { font-size: 1.5rem; font-weight: bold; color: var(--primary); transition: color 0.3s; }
         .card-value.danger { color: var(--danger); }
 
         .btn { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: var(--border-radius); font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 24px; transition: background 0.2s; }
         .btn:active { background: var(--primary-dark); }
         .btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--text-secondary); margin-top: 8px; }
         .btn-danger { background: var(--danger); padding: 6px 12px; font-size: 0.85rem; width: auto; }
-
-        .history-section { margin-top: 16px; }
-        .history-section h2 { font-size: 1.1rem; margin-bottom: 12px; color: var(--text); }
-        .table-container { overflow-x: auto; background: var(--card-bg); border-radius: var(--border-radius); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        table { width: 100%; border-collapse: collapse; min-width: 400px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.9rem; }
-        th { background: rgba(0,0,0,0.02); color: var(--text-secondary); font-weight: 600; }
-        tr:last-child td { border-bottom: none; }
-
-        /* Modals */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
-        .modal-overlay.active { display: flex; }
-        .modal { background: var(--card-bg); border-radius: var(--border-radius); padding: 24px; width: 100%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-        .modal h2 { margin-bottom: 20px; font-size: 1.25rem; color: var(--primary); }
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text-secondary); }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px<think>
-Thinking Process:
-
-1.  **Analyze the Request**: The user wants a complete Progressive Web App (PWA) for tracking annual and excuse leaves, strictly adhering to a provided technical specification. It must be offline-capable, use `localStorage`, run on GitHub Pages, and consist of exactly four files: `index.html` (containing all HTML, CSS, JS), `manifest.json`, `sw.js`, and a placeholder/reference for `icon-512.png`. No external libraries are allowed.
-
-2.  **Review Previous Output**: I started generating the `index.html` but it got cut off or I need to ensure the full, complete, and valid code is provided without truncation. I must provide all 4 files clearly.
-
-3.  **Refine `index.html`**:
-    *   Ensure all CSS is complete (including dark mode).
-    *   Ensure all JS logic is complete:
-        *   Initial setup modal (Hire date, initial annual leave).
-        *   Accrual logic (1-5 yrs: 14, 6-14 yrs: 20, 15+ yrs: 26).
-        *   Excuse leave reset (Jan 1st to 5 days).
-        *   Add leave logic (deduct from balance, add to history).
-        *   Delete leave logic (restore balance, remove from history).
-        *   Settings modal (edit hire date, edit annual leave balance).
-        *   Date formatting (DD.MM.YYYY).
-    *   Ensure Service Worker registration is present.
-
-4.  **Refine `manifest.json`**: Match the spec exactly.
-
-5.  **Refine `sw.js`**: Cache-first strategy for `index.html`, `manifest.json`, `icon-512.png`.
-
-6.  **Refine `icon-512.png`**: Since I cannot output a binary file, I will provide a Base64 encoded string of a valid 512x512 PNG (a simple blue square with a white calendar/check icon) and clear instructions on how to save it. *Self-correction*: A 512x512 base64 string is quite long. I will provide a compact, valid base64 string for a 512x512 solid color `#1976D2` image, which satisfies the PWA requirement, and note that they can replace it with their own logo.
-
-7.  **Drafting the Code (Mental Check of JS Logic)**:
-    *   `parseDate("15.04.2021")` -> `new Date(2021, 3, 15)`
-    *   `formatDate(new Date())` -> `"04.06.2026"`
-    *   `getServiceDuration("15.04.2021")` -> Calculate years and months accurately.
-    *   `checkAccruals()`:
-        *   Get today's date.
-        *   Calculate `yearsOfService` (completed years).
-        *   If `yearsOfService > data.lastAccrualYear`:
-            *   Loop `y` from `data.lastAccrualYear + 1` to `yearsOfService`.
-            *   `entitlement = (y <= 4) ? 14 : (y <= 14) ? 20 : 26` (Wait, spec says: 1-5 years = 14, 6-14 = 20, 15+ = 26. So if `y` (completed years) is 1, 2, 3, 4, 5 -> 14 days. If 6, 7... 14 -> 20 days. If 15+ -> 26 days.)
-            *   Let's re-read spec: "Hizmet Süresi 1 - 5 yıl: 14 gün", "6 - 14 yıl: 20 gün", "15 yıl ve üzeri: 26 gün".
-            *   Example in spec: "İşe giriş: 15.04.2020, Bugün: 20.04.2026. 6. hizmet yılına girildi. +20 gün izin ekle."
-            *   This means upon completing 5 years and entering the 6th year, they get 20 days.
-            *   So, completed years = 5 -> entitlement = 20.
-            *   completed years = 1, 2, 3, 4 -> entitlement = 14.
-            *   completed years = 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 -> entitlement = 20.
-            *   completed years >= 15 -> entitlement = 26.
-            *   Let's adjust the helper:
-                ```javascript
-                function getEntitlement(completedYears) {
-                    if (completedYears >= 1 && completedYears <= 4) return 14;
-                    if (completedYears >= 5 && completedYears <= 14) return 20;
-                    if (completedYears >= 15) return 26;
-                    return 0;
-                }
-                ```
-            *   Wait, the spec example says: "6. hizmet yılına girildi. +20 gün izin ekle."
-            *   If I started in 2020, in 2021 I complete 1 year (enter 2nd year) -> 14 days.
-            *   In 2025 I complete 5 years (enter 6th year) -> 20 days.
-            *   So `completedYears` = 5 gives 20 days. My helper function is correct.
-    *   `checkExcuseLeave()`:
-        *   If `currentYear > data.lastExcuseLeaveResetYear`:
-            *   `data.excuseLeave = 5`
-            *   `data.lastExcuseLeaveResetYear = currentYear`
-            *   `saveData(data)`
-
-8.  **Final Polish**: Ensure Turkish UI text is perfect. Ensure no external fonts/CDNs are used. Ensure the code is robust against `localStorage` being empty.
-
-9.  **Output Generation**: Present the 4 files clearly with instructions.
-</think>
-
-İşte talep ettiğiniz teknik şartnameye tam uyumlu, harici kütüphane içermeyen, tamamen offline çalışabilen ve GitHub Pages'e doğrudan yüklenebilen PWA proje dosyaları.
-
-### 1. `index.html`
-Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mod, responsive tasarım ve tüm iş mantığı (hak ediş, mazeret izni sıfırlama, geçmiş hesaplama) dahildir.
-
-```html
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1976D2">
-    <meta name="description" content="Yıllık ve mazeret izinlerinizi takip edin.">
-    <title>Yıllık İzin Takibi</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="icon-512.png">
-    <style>
-        :root {
-            --primary: #1976D2;
-            --primary-dark: #1565C0;
-            --bg: #F5F7FA;
-            --card-bg: #FFFFFF;
-            --text: #212121;
-            --text-secondary: #757575;
-            --danger: #D32F2F;
-            --border-radius: 12px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #121212;
-                --card-bg: #1E1E1E;
-                --text: #E0E0E0;
-                --text-secondary: #A0A0A0;
-            }
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: var(--bg); color: var(--text); padding: 16px; padding-bottom: 80px; }
-
-        header { text-align: center; margin-bottom: 24px; padding-top: 8px; }
-        header h1 { font-size: 1.5rem; color: var(--primary); }
-
-        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-        .card { background: var(--card-bg); border-radius: var(--border-radius); padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .card.full-width { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; }
-        .card-label { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; }
-        .card-value { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
-        .card-value.danger { color: var(--danger); }
-
-        .btn { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: var(--border-radius); font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 24px; transition: background 0.2s; }
-        .btn:active { background: var(--primary-dark); }
-        .btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--text-secondary); margin-top: 8px; }
-        .btn-danger { background: var(--danger); padding: 6px 12px; font-size: 0.85rem; width: auto; }
+        .btn-reset { background: var(--danger); color: white; border: none; padding: 12px; border-radius: var(--border-radius); font-size: 0.9rem; font-weight: 600; cursor: pointer; width: 100%; margin-top: 16px; }
 
         .history-section { margin-top: 16px; }
         .history-section h2 { font-size: 1.1rem; margin-bottom: 12px; color: var(--text); }
@@ -200,7 +64,7 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
         .form-group label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: var(--text-secondary); }
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; font-size: 1rem; background: var(--card-bg); color: var(--text); }
         .form-group input:focus, .form-group select:focus { outline: 2px solid var(--primary); border-color: transparent; }
-
+        
         .settings-link { position: fixed; bottom: 16px; right: 16px; background: var(--card-bg); width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; color: var(--text-secondary); font-size: 1.5rem; border: none; }
     </style>
 </head>
@@ -264,11 +128,11 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 0.9rem;">Uygulamayı kullanmaya başlamak için aşağıdaki bilgileri giriniz.</p>
             <div class="form-group">
                 <label>İşe Giriş Tarihi (GG.AA.YYYY)</label>
-                <input type="text" id="setup-hireDate" placeholder="Örn: 15.04.2021" pattern="\d{2}\.\d{2}\.\d{4}">
+                <input type="text" id="setup-hireDate" placeholder="Örn: 04.09.2025" pattern="\d{2}\.\d{2}\.\d{4}">
             </div>
             <div class="form-group">
                 <label>Mevcut Kullanılabilir Yıllık İzin (Gün)</label>
-                <input type="number" id="setup-annualLeave" placeholder="Örn: 18" min="0">
+                <input type="number" id="setup-annualLeave" placeholder="Örn: 4" min="0">
             </div>
             <button class="btn" onclick="saveInitialSetup()">Kaydet ve Başla</button>
         </div>
@@ -312,11 +176,14 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             </div>
             <div class="form-group">
                 <label>Yıllık İzin Bakiyesi (Gün)</label>
-                <input type="number" id="set-annualLeave" min="0">
+                <input type="number" id="set-annualLeave">
             </div>
             <p style="font-size: 0.8rem; color: var(--danger); margin-bottom: 16px;">* Mazeret izni elle değiştirilemez, her yıl 1 Ocak'ta otomatik 5 gün olur.</p>
-            <button class="btn" onclick="saveSettings()">Kaydet</button>
+            <button class="btn" onclick="saveSettings()">Değişiklikleri Kaydet</button>
             <button class="btn btn-secondary" onclick="closeModal('settingsModal')">İptal</button>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 20px 0;">
+            <button class="btn-reset" onclick="resetData()">⚠️ Tüm Verileri Sıfırla</button>
         </div>
     </div>
 
@@ -332,7 +199,6 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             leaveRecords: []
         };
 
-        // Yardımcı Fonksiyonlar
         function parseDate(trDate) {
             const parts = trDate.split('.');
             return new Date(parts[2], parts[1] - 1, parts[0]);
@@ -361,7 +227,7 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             const now = new Date();
             let years = now.getFullYear() - hire.getFullYear();
             let months = now.getMonth() - hire.getMonth();
-
+            
             if (now.getDate() < hire.getDate()) {
                 months--;
             }
@@ -379,7 +245,7 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             if (now.getMonth() < hire.getMonth() || (now.getMonth() === hire.getMonth() && now.getDate() < hire.getDate())) {
                 yearsOfService--;
             }
-
+            
             const nextDate = new Date(hire);
             nextDate.setFullYear(hire.getFullYear() + yearsOfService + 1);
             return formatDate(nextDate);
@@ -426,15 +292,28 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
         }
 
         function render() {
-            document.getElementById('val-annual').textContent = appData.annualLeave + ' Gün';
-            document.getElementById('val-excuse').textContent = appData.excuseLeave + ' Gün';
+            const annualEl = document.getElementById('val-annual');
+            annualEl.textContent = appData.annualLeave + ' Gün';
+            if (appData.annualLeave < 0) {
+                annualEl.classList.add('danger');
+            } else {
+                annualEl.classList.remove('danger');
+            }
+
+            const excuseEl = document.getElementById('val-excuse');
+            excuseEl.textContent = appData.excuseLeave + ' Gün';
+            if (appData.excuseLeave < 0) {
+                excuseEl.classList.add('danger');
+            } else {
+                excuseEl.classList.remove('danger');
+            }
+
             document.getElementById('val-next').textContent = getNextAccrualDate();
             document.getElementById('val-service').textContent = getServiceDuration(appData.hireDate);
 
             const tbody = document.getElementById('historyBody');
             tbody.innerHTML = '';
-
-            // Kayıtları tarihe göre ters sırala (en yeni en üstte)
+            
             const sortedRecords = [...appData.leaveRecords].sort((a, b) => {
                 return parseDate(b.date).getTime() - parseDate(a.date).getTime();
             });
@@ -452,7 +331,6 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             });
         }
 
-        // Modal İşlemleri
         function openModal(id) {
             document.getElementById(id).classList.add('active');
             if (id === 'settingsModal') {
@@ -465,13 +343,12 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             document.getElementById(id).classList.remove('active');
         }
 
-        // İlk Kurulum
         function saveInitialSetup() {
             const hireDate = document.getElementById('setup-hireDate').value;
             const annualLeave = parseInt(document.getElementById('setup-annualLeave').value) || 0;
 
             if (!/^\d{2}\.\d{2}\.\d{4}$/.test(hireDate)) {
-                alert('Lütfen tarihi GG.AA.YYYY formatında giriniz. (Örn: 15.04.2021)');
+                alert('Lütfen tarihi GG.AA.YYYY formatında giriniz. (Örn: 04.09.2025)');
                 return;
             }
 
@@ -482,7 +359,7 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             appData.lastAccrualYear = 0;
             appData.lastExcuseLeaveResetYear = new Date().getFullYear();
             appData.leaveRecords = [];
-
+            
             saveData();
             closeModal('initialSetupModal');
             checkAccruals();
@@ -490,7 +367,6 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             document.getElementById('app').style.display = 'block';
         }
 
-        // İzin Ekleme
         function saveLeave() {
             const type = document.getElementById('add-type').value;
             const dateInput = document.getElementById('add-date').value;
@@ -498,26 +374,19 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             const desc = document.getElementById('add-desc').value;
 
             if (!dateInput || !days || days <= 0) {
-                alert('Lütfen geçerli bir tarih ve gün sayısı giriniz.');
+                alert('Lütfen geçerli bir tarih ve pozitif bir gün sayısı giriniz.');
                 return;
             }
 
             const dateObj = new Date(dateInput);
-            const trDate = String(dateObj.getDate()).padStart(2, '0') + '.' +
-                           String(dateObj.getMonth() + 1).padStart(2, '0') + '.' +
+            const trDate = String(dateObj.getDate()).padStart(2, '0') + '.' + 
+                           String(dateObj.getMonth() + 1).padStart(2, '0') + '.' + 
                            dateObj.getFullYear();
 
+            // Eksi bakiyeye düşmeye izin ver (Kullanıcı talebi)
             if (type === 'Yıllık') {
-                if (appData.annualLeave < days) {
-                    alert('Yeterli yıllık izin bakiyeniz bulunmamaktadır.');
-                    return;
-                }
                 appData.annualLeave -= days;
             } else {
-                if (appData.excuseLeave < days) {
-                    alert('Yeterli mazeret izni bakiyeniz bulunmamaktadır.');
-                    return;
-                }
                 appData.excuseLeave -= days;
             }
 
@@ -531,23 +400,21 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
 
             saveData();
             closeModal('addLeaveModal');
-
-            // Formu temizle
+            
             document.getElementById('add-date').value = '';
             document.getElementById('add-days').value = '1';
             document.getElementById('add-desc').value = '';
-
+            
             render();
         }
 
-        // İzin Silme
         function deleteLeave(id) {
             if (!confirm('Bu izin kaydını silmek istediğinize emin misiniz? Bakiye geri eklenecektir.')) return;
 
             const recordIndex = appData.leaveRecords.findIndex(r => r.id === id);
             if (recordIndex > -1) {
                 const record = appData.leaveRecords[recordIndex];
-
+                
                 if (record.type === 'Yıllık') {
                     appData.annualLeave += record.days;
                 } else {
@@ -560,7 +427,6 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             }
         }
 
-        // Ayarları Kaydetme
         function saveSettings() {
             const newHireDate = document.getElementById('set-hireDate').value;
             const newAnnualLeave = parseInt(document.getElementById('set-annualLeave').value) || 0;
@@ -570,16 +436,11 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
                 return;
             }
 
-            // İşe giriş tarihi değişirse, hak ediş hesaplamasını sıfırlayıp yeniden yapmak gerekir
-            // Ancak kullanıcı bakiyeyi manuel düzenlediği için, lastAccrualYear'ı sıfırlayıp
-            // mevcut bakiyeyi koruyarak yeniden hesaplatmak en güvenli yoldur.
             if (appData.hireDate !== newHireDate) {
                 appData.hireDate = newHireDate;
-                appData.lastAccrualYear = 0; // Yeniden hesaplamayı tetiklemek için
-                // Not: annualEarnedTotal ve annualLeave kullanıcı tarafından manuel ayarlandığı için
-                // checkAccruals() fonksiyonu sadece eksik kalan yılları ekleyecektir.
+                appData.lastAccrualYear = 0; 
             }
-
+            
             appData.annualLeave = newAnnualLeave;
             saveData();
             checkAccruals();
@@ -587,7 +448,13 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
             render();
         }
 
-        // Başlatma
+        function resetData() {
+            if (confirm('DİKKAT: Tüm izin kayıtları, bakiyeler ve ayarlar kalıcı olarak silinecektir. İlk kurulum ekranına döneceksiniz. Devam etmek istiyor musunuz?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             loadData();
             if (!appData.hireDate) {
@@ -598,7 +465,6 @@ Tüm HTML, CSS ve JavaScript kodlarını tek dosyada barındırır. Karanlık mo
                 document.getElementById('app').style.display = 'block';
             }
 
-            // Service Worker Kaydı
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
                     .then(reg => console.log('SW kaydedildi', reg))
