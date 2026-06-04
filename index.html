@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>İzin Takip Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        button { width: 100%; padding: 15px; background: #03dac6; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; border-radius: 5px; border: 1px solid #333; background: #2c2c2c; color: white; }
+    </style>
+</head>
+<body>
+    <h2>İzin Takip Paneli</h2>
+    <div class="card">
+        <label>İşe Giriş Tarihi:</label>
+        <input type="date" id="joinDate">
+        <label>Devreden İzin (Gün):</label>
+        <input type="number" id="carryOver" value="0">
+        <button onclick="saveSettings()">Ayarları Kaydet</button>
+    </div>
+    <div class="card">
+        <h3>Kalan İzin: <span id="remainingDays">0</span></h3>
+        <p>Mazeret İzni (Yıllık 5): <span id="mazeretDays">5</span></p>
+    </div>
+    <script>
+        // Basit veri yönetimi mantığı
+        function saveSettings() {
+            localStorage.setItem('joinDate', document.getElementById('joinDate').value);
+            localStorage.setItem('carryOver', document.getElementById('carryOver').value);
+            alert("Ayarlar kaydedildi.");
+        }
+        // İzin hesaplama mantığı burada yıllara göre switch-case ile genişletilecek
+    </script>
+    <script src="sw.js"></script>
+</body>
+</html>
