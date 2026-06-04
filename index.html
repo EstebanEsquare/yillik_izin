@@ -6,89 +6,99 @@
     <title>İzin Takip Pro</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #121212; color: #fff; padding: 15px; }
-        .card { background: #1e1e1e; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; background: #2c2c2c; border: 1px solid #444; color: white; border-radius: 8px; }
-        button { width: 100%; padding: 12px; background: #03dac6; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .log-item { border-bottom: 1px solid #333; padding: 8px 0; font-size: 0.9rem; display: flex; justify-content: space-between; }
+        body { font-family: sans-serif; background: #121212; color: #fff; padding: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; background: #2c2c2c; border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: #03dac6; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; }
+        .log-item { background: #252525; padding: 10px; margin-top: 5px; border-radius: 5px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <h3>Personel Parametreleri</h3>
-    <div class="card">
+    <h2>İzin Takip Sistemi</h2>
+    <div class="card" id="setupCard">
         <label>İşe Giriş Tarihi:</label>
-        <input type="date" id="joinDate" onchange="calc()">
-        <label>Devreden İzin (Gün):</label>
-        <input type="number" id="carryOver" value="0" oninput="calc()">
-        <button onclick="saveData()">Verileri Kaydet</button>
+        <input type="date" id="joinDate">
+        <label>Başlangıç İzin Bakiyesi:</label>
+        <input type="number" id="initialBalance" value="0">
+        <button onclick="saveInitial()">Kaydet</button>
     </div>
 
-    <h3>İzin Ekle</h3>
     <div class="card">
+        <h3>Özet</h3>
+        <p>Toplam Hak Ediş: <span id="totalRights">0</span> Gün</p>
+        <p>Kullanılan: <span id="totalUsed">0</span> Gün</p>
+        <p><b>Kalan: <span id="remaining">0</span> Gün</b></p>
+    </div>
+
+    <div class="card">
+        <label>Başlangıç Tarihi:</label>
         <input type="date" id="start">
-        <input type="date" id="end">
-        <input type="text" id="desc" placeholder="Açıklama">
-        <button onclick="addLeave()" style="background:#6200ee; color:white;">Ekle</button>
-    </div>
-
-    <div class="card">
-        <p>Toplam Hak Ediş: <span id="totalHakedis">0</span></p>
-        <p>Kullanılan: <span id="totalUsed">0</span></p>
-        <p><b>Kalan: <span id="remaining">0</span></b></p>
+        <label>Kullanılan Gün:</label>
+        <input type="number" id="usedDays">
+        <label>Açıklama:</label>
+        <input type="text" id="desc">
+        <button onclick="addLeave()" style="background:#6200ee; color:white;">İzin Ekle</button>
     </div>
 
     <div id="logList"></div>
 
     <script>
-        let data = JSON.parse(localStorage.getItem('izinData')) || { joinDate: '', carryOver: 0, leaves: [] };
+        let data = JSON.parse(localStorage.getItem('izinData')) || { joinDate: null, initialBalance: 0, lastUpdateYear: null, leaves: [] };
 
-        function calc() {
-            const join = new Date(document.getElementById('joinDate').value);
+        function calculateAutoHakedis() {
+            if (!data.joinDate) return;
+            const join = new Date(data.joinDate);
             const now = new Date();
-            const carry = parseInt(document.getElementById('carryOver').value) || 0;
+            let yearsDiff = now.getFullYear() - join.getFullYear();
             
-            let years = now.getFullYear() - join.getFullYear();
-            if (now < new Date(now.getFullYear(), join.getMonth(), join.getDate())) years--;
-            
-            let hakedis = 0;
-            for(let i=1; i<=years; i++) {
-                if(i <= 5) hakedis += 14;
-                else if(i <= 15) hakedis += 20;
-                else hakedis += 26;
+            // Yıl dönümü henüz gelmediyse bir önceki yılı baz al
+            if (now < new Date(now.getFullYear(), join.getMonth(), join.getDate())) yearsDiff--;
+
+            if (yearsDiff > 0 && (data.lastUpdateYear !== now.getFullYear())) {
+                let yeniHak = 0;
+                for (let i = 1; i <= yearsDiff; i++) {
+                    if (i <= 5) yeniHak += 14;
+                    else if (i <= 15) yeniHak += 20;
+                    else yeniHak += 26;
+                }
+                data.initialBalance = yeniHak; 
+                data.lastUpdateYear = now.getFullYear();
+                localStorage.setItem('izinData', JSON.stringify(data));
             }
-            
-            let used = data.leaves.reduce((sum, l) => sum + l.days, 0);
-            document.getElementById('totalHakedis').innerText = hakedis + carry;
+        }
+
+        function updateUI() {
+            if(!data.joinDate) return;
+            calculateAutoHakedis();
+            let used = data.leaves.reduce((sum, l) => sum + parseInt(l.days), 0);
+            document.getElementById('totalRights').innerText = data.initialBalance;
             document.getElementById('totalUsed').innerText = used;
-            document.getElementById('remaining').innerText = (hakedis + carry) - used;
+            document.getElementById('remaining').innerText = data.initialBalance - used;
+            
+            document.getElementById('logList').innerHTML = data.leaves.map(l => 
+                `<div class="log-item">${l.start}: ${l.days} gün - ${l.desc}</div>`).join('');
+        }
+
+        function saveInitial() {
+            data.joinDate = document.getElementById('joinDate').value;
+            data.initialBalance = parseInt(document.getElementById('initialBalance').value);
+            data.lastUpdateYear = new Date().getFullYear();
+            localStorage.setItem('izinData', JSON.stringify(data));
+            updateUI();
         }
 
         function addLeave() {
-            const s = new Date(document.getElementById('start').value);
-            const e = new Date(document.getElementById('end').value);
-            const days = Math.round((e - s) / (1000 * 3600 * 24)) + 1;
-            data.leaves.push({start: s.toISOString().split('T')[0], end: e.toISOString().split('T')[0], days, desc: document.getElementById('desc').value});
-            saveData();
-            renderLogs();
-        }
-
-        function saveData() {
-            data.joinDate = document.getElementById('joinDate').value;
-            data.carryOver = document.getElementById('carryOver').value;
+            data.leaves.push({start: document.getElementById('start').value, days: document.getElementById('usedDays').value, desc: document.getElementById('desc').value});
             localStorage.setItem('izinData', JSON.stringify(data));
-            calc();
-        }
-
-        function renderLogs() {
-            const list = document.getElementById('logList');
-            list.innerHTML = data.leaves.map(l => `<div class="log-item">${l.start} - ${l.desc} (${l.days} gün)</div>`).join('');
+            updateUI();
         }
 
         window.onload = () => {
-            document.getElementById('joinDate').value = data.joinDate;
-            document.getElementById('carryOver').value = data.carryOver;
-            renderLogs();
-            calc();
+            if(data.joinDate) {
+                document.getElementById('joinDate').value = data.joinDate;
+                document.getElementById('initialBalance').value = data.initialBalance;
+                updateUI();
+            }
         };
     </script>
     <script src="sw.js"></script>
